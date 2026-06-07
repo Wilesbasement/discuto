@@ -1,0 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+export function normalizeUsername(v:string){return v.trim().toLowerCase().replace(/[^a-z0-9_.-]/g,"")}
+export function looksLikeEmail(v:string){return v.includes("@")&&v.includes(".")}
+export async function resolveLoginEmail(supabase:SupabaseClient, identity:string){const value=identity.trim().toLowerCase(); if(!value)return{email:null,error:"Enter your username or email."}; if(looksLikeEmail(value))return{email:value,error:null}; const username=normalizeUsername(value); const {data,error}=await supabase.from("profiles").select("email").eq("username",username).maybeSingle(); if(error)return{email:null,error:error.message}; if(!data?.email)return{email:null,error:"No account found. Try your email or create an account."}; return{email:data.email as string,error:null}}

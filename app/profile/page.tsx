@@ -65,7 +65,10 @@ export default async function ProfilePage() {
         profile={profile}
         checkins={checkins || []}
         rounds={rounds || []}
-        publicActivity={friendCheckins || []}
+        publicActivity={(friendCheckins || []).map((item: any) => ({
+  ...item,
+  profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
+}))}
       />
     </main>
   );

@@ -1,74 +1,100 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/site-nav";
 import { PlayerDashboard } from "@/components/dashboard/player-dashboard";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 
-export default async function ProfilePage() {
+export default function ProfilePage() {
+  const router = useRouter();
   const supabase = createClient();
 
-  if (!supabase) {
+  const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState("");
+  const [profile, setProfile] = useState<any>(null);
+  const [checkins, setCheckins] = useState<any[]>([]);
+  const [rounds, setRounds] = useState<any[]>([]);
+  const [publicActivity, setPublicActivity] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadProfile() {
+      const { data: authData } = await supabase.auth.getUser();
+
+      if (!authData.user) {
+        router.replace("/login");
+        return;
+      }
+
+      setUserEmail(authData.user.email || "");
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authData.user.id)
+        .single();
+
+      setProfile(profileData);
+
+      const { data: checkinData } = await supabase
+        .from("checkins")
+        .select("*")
+        .eq("user_id", authData.user.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      setCheckins(checkinData || []);
+
+      const { data: roundData } = await supabase
+        .from("rounds")
+        .select("*")
+        .eq("user_id", authData.user.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      setRounds(roundData || []);
+
+      const { data: activityData } = await supabase
+        .from("checkins")
+        .select("id, course_id, course_name, score, notes, created_at, profiles(username, display_name)")
+        .order("created_at", { ascending: false })
+        .limit(12);
+
+      setPublicActivity(
+        (activityData || []).map((item: any) => ({
+          ...item,
+          profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
+        }))
+      );
+
+      setLoading(false);
+    }
+
+    loadProfile();
+  }, [router, supabase]);
+
+  if (loading) {
     return (
       <main>
         <SiteNav />
         <section className="page-shell">
-          <div className="container page-stack">
-            <div className="page-header">
-              <span className="eyebrow">Profile</span>
-              <h1 className="dashboard-title">Supabase setup needed</h1>
-              <p className="dashboard-copy">Add your Supabase environment variables before using player profiles.</p>
-            </div>
+          <div className="container">
+            <p className="dashboard-copy">Loading your profile...</p>
           </div>
         </section>
       </main>
     );
   }
 
-  const { data: authData } = await supabase.auth.getUser();
-
-  if (!authData.user) {
-    redirect("/login");
-  }
-
-  const userId = authData.user.id;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, username, display_name, email, hometown, favorite_course, created_at")
-    .eq("id", userId)
-    .single();
-
-  const { data: checkins } = await supabase
-    .from("checkins")
-    .select("id, course_id, course_name, score, notes, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  const { data: rounds } = await supabase
-    .from("rounds")
-    .select("id, course_id, course_name, total_score, notes, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  const { data: friendCheckins } = await supabase
-    .from("checkins")
-    .select("id, course_id, course_name, score, notes, created_at, profiles(username, display_name)")
-    .order("created_at", { ascending: false })
-    .limit(12);
-
   return (
     <main>
       <SiteNav />
       <PlayerDashboard
-        userEmail={authData.user.email || ""}
+        userEmail={userEmail}
         profile={profile}
-        checkins={checkins || []}
-        rounds={rounds || []}
-        publicActivity={(friendCheckins || []).map((item: any) => ({
-  ...item,
-  profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
-}))}
+        checkins={checkins}
+        rounds={rounds}
+        publicActivity={publicActivity}
       />
     </main>
   );

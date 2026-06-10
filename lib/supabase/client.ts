@@ -8,8 +8,10 @@ export function createClient() {
 
   return createBrowserClient(url, anonKey, {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: typeof window !== "undefined" ? window.sessionStorage : undefined,
     },
   });
 }

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LoggedInHome } from "@/components/home/logged-in-home";
 import { PublicHome } from "@/components/home/public-home";
 import { createClient } from "@/lib/supabase/client";
 
 export default function HomePage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
@@ -15,6 +15,15 @@ export default function HomePage() {
   const [rounds, setRounds] = useState<any[]>([]);
 
   async function loadHome() {
+    if (!supabase) {
+      setLoggedIn(false);
+      setProfile({});
+      setCheckins([]);
+      setRounds([]);
+      setLoading(false);
+      return;
+    }
+
     const { data: authData } = await supabase.auth.getUser();
 
     if (!authData.user) {
@@ -32,7 +41,7 @@ export default function HomePage() {
       .from("profiles")
       .select("*")
       .eq("id", authData.user.id)
-      .single();
+      .maybeSingle();
 
     const { data: checkinData } = await supabase
       .from("checkins")
@@ -48,7 +57,7 @@ export default function HomePage() {
       .order("created_at", { ascending: false })
       .limit(5);
 
-    setProfile(profileData || {});
+    setProfile(profileData || { email: authData.user.email });
     setCheckins(checkinData || []);
     setRounds(roundData || []);
     setLoading(false);
@@ -57,6 +66,8 @@ export default function HomePage() {
   useEffect(() => {
     loadHome();
 
+    if (!supabase) return;
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => {
@@ -64,6 +75,7 @@ export default function HomePage() {
     });
 
     return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {

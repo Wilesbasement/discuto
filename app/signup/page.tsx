@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/site-nav";
 import { createClient } from "@/lib/supabase/client";
 
+function cleanUsernameValue(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, "");
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -22,8 +26,21 @@ export default function SignupPage() {
     setLoading(true);
     setMessage("");
 
-    const cleanUsername = username.trim().toLowerCase();
+    if (!supabase) {
+      setMessage("Supabase is not configured yet.");
+      setLoading(false);
+      return;
+    }
+
+    const cleanUsername = cleanUsernameValue(username);
     const cleanEmail = email.trim().toLowerCase();
+    const cleanName = fullName.trim();
+
+    if (!cleanUsername) {
+      setMessage("Choose a username using letters, numbers, dots, dashes, or underscores.");
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
@@ -31,8 +48,8 @@ export default function SignupPage() {
       options: {
         data: {
           username: cleanUsername,
-          display_name: fullName.trim(),
-          full_name: fullName.trim(),
+          display_name: cleanName,
+          full_name: cleanName,
         },
       },
     });
@@ -48,14 +65,14 @@ export default function SignupPage() {
         id: data.user.id,
         email: cleanEmail,
         username: cleanUsername,
-        display_name: fullName.trim(),
-        full_name: fullName.trim(),
+        display_name: cleanName,
+        full_name: cleanName,
       });
     }
 
     setMessage("Account created. You can log in now.");
     setLoading(false);
-    router.push("/login");
+    router.replace("/login");
     router.refresh();
   }
 
@@ -124,7 +141,7 @@ export default function SignupPage() {
               />
             </label>
 
-            <button className="button button-primary" disabled={loading}>
+            <button className="button button-primary" disabled={loading} type="submit">
               {loading ? "Creating account..." : "Create account"}
             </button>
 

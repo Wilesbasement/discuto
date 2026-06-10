@@ -21,6 +21,12 @@ export default function LoginPage() {
     setMessage("");
     setLoading(true);
 
+    if (!supabase) {
+      setMessage("Supabase is not configured yet.");
+      setLoading(false);
+      return;
+    }
+
     const resolved = await resolveLoginEmail(supabase as any, identity.trim());
 
     if (resolved.error || !resolved.email) {
@@ -40,7 +46,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/profile");
+    router.replace("/");
     router.refresh();
   }
 
@@ -84,7 +90,7 @@ export default function LoginPage() {
               />
             </label>
 
-            <button className="button button-primary" disabled={loading}>
+            <button className="button button-primary" disabled={loading} type="submit">
               {loading ? "Logging in..." : "Log in"}
             </button>
 

@@ -15,9 +15,9 @@ export function PublicHome() {
               Your disc golf profile, scores, and course activity.
             </h1>
 
-            <p className="dashboard-copy">
-              Browse courses publicly. Create a player profile to check in, post
-              scores, follow friends, and climb leaderboards.
+            <p className="dashboard-copy" style={{ marginTop: "1.25rem" }}>
+              Browse courses publicly. Create a player profile to check in, post scores,
+              follow friends, and climb leaderboards.
             </p>
           </div>
 

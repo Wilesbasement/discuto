@@ -16,8 +16,8 @@ export function PublicHome() {
             </h1>
 
             <p className="dashboard-copy">
-              Browse courses publicly. Create a player profile to check in, post scores,
-              follow friends, and climb leaderboards.
+              Browse courses publicly. Create a player profile to check in, post
+              scores, follow friends, and climb leaderboards.
             </p>
           </div>
 

@@ -1,40 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteNav } from "@/components/site-nav";
-import { getCourseById, getCourses } from "@/lib/courses";
-import { getCourseCommunity } from "@/lib/community";
 import { CourseCommunityPanel } from "@/components/course-community-panel";
+import { courseLocationLine, getOsmDiscGolfCourseByStableId } from "@/lib/osm-disc-golf";
+import { saveCourseToRegistry } from "@/lib/course-registry";
+import { getCourseCommunity } from "@/lib/community";
 
-function readCourseUrlId(value: string) {
-  try {
-    return Buffer.from(value, "base64url").toString("utf8");
-  } catch {
-    return decodeURIComponent(value);
-  }
-}
-
-export default async function CoursePage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const courseId = readCourseUrlId(params.id);
-
-  let course = await getCourseById(courseId);
-
-  if (!course) {
-    const courses = await getCourses("");
-    course =
-      courses.find((item) => String(item.id) === courseId) ||
-      courses.find((item) => item.name === courseId) ||
-      null;
-  }
+export default async function CoursePage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+  const resolved = await Promise.resolve(params);
+  const stableId = decodeURIComponent(resolved.id);
+  const course = await getOsmDiscGolfCourseByStableId(stableId);
 
   if (!course) {
     notFound();
   }
 
-  const community = await getCourseCommunity(course.id);
+  await saveCourseToRegistry(course);
+  const community = await getCourseCommunity(course.stableId);
 
   return (
     <main>
@@ -45,13 +27,8 @@ export default async function CoursePage({
           <section className="dashboard-hero">
             <div>
               <span className="eyebrow">Course page</span>
-
               <h1 className="dashboard-title">{course.name}</h1>
-
-              <p className="dashboard-copy">
-                {course.city || "Unknown city"} • {course.state || "Unknown state"}
-                {course.zip ? ` • ${course.zip}` : ""}
-              </p>
+              <p className="dashboard-copy">{courseLocationLine(course)}</p>
             </div>
 
             <div className="grid">
@@ -72,18 +49,29 @@ export default async function CoursePage({
             </div>
           </section>
 
-          <CourseCommunityPanel courseId={course.id} courseName={course.name} />
+          <CourseCommunityPanel courseId={course.stableId} courseName={course.name} />
 
           <section className="panel">
             <h2>Course actions</h2>
+            <p className="dashboard-copy">
+              This course uses stable ID <code>{course.stableId}</code>. That ID is safe for check-ins, scores, leaderboards, and future API routes.
+            </p>
 
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Link
-                className="button secondary"
-                href={`/leaderboard?course=${encodeURIComponent(String(course.id))}`}
-              >
+              <Link className="button secondary" href={`/leaderboard?course=${encodeURIComponent(course.stableId)}`}>
                 Course leaderboard
               </Link>
+
+              {course.latitude && course.longitude ? (
+                <a
+                  className="button secondary"
+                  href={`https://www.openstreetmap.org/search?query=${course.latitude}%2C${course.longitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open map
+                </a>
+              ) : null}
 
               <Link className="button secondary" href="/courses">
                 Back to courses

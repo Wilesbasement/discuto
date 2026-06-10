@@ -1,14 +1,11 @@
 import Link from "next/link";
 import { SiteNav } from "@/components/site-nav";
-import { getCourses } from "@/lib/courses";
+import { courseLocationLine, searchOsmDiscGolfCourses } from "@/lib/osm-disc-golf";
 
-export default async function CoursesPage({
-  searchParams,
-}: {
-  searchParams?: { q?: string };
-}) {
-  const q = searchParams?.q || "";
-  const courses = await getCourses(q);
+export default async function CoursesPage({ searchParams }: { searchParams?: Promise<{ q?: string }> | { q?: string } }) {
+  const resolved = await Promise.resolve(searchParams || {});
+  const q = resolved.q || "";
+  const courses = q ? await searchOsmDiscGolfCourses(q) : [];
 
   return (
     <main>
@@ -17,10 +14,10 @@ export default async function CoursesPage({
       <section className="page-shell">
         <div className="container page-stack">
           <div>
-            <span className="eyebrow">Course directory</span>
-            <h1 className="dashboard-title">Disc Golf Courses</h1>
+            <span className="eyebrow">Worldwide course directory</span>
+            <h1 className="dashboard-title">Find disc golf courses anywhere.</h1>
             <p className="dashboard-copy">
-              Search real course data and open a course to view activity, check-ins, and best scores.
+              Search by city, state, country, or course name. DiscPlus uses OpenStreetMap course data and saves stable course records for check-ins, scores, leaderboards, and a future API.
             </p>
           </div>
 
@@ -31,38 +28,49 @@ export default async function CoursesPage({
                 className="form-input"
                 name="q"
                 defaultValue={q}
-                placeholder="Course, city, state, or zip"
+                placeholder="Examples: Denver, Finland, Maple Hill, Tokyo"
               />
             </label>
 
             <button className="button" style={{ marginTop: 14 }}>
-              Search
+              Search worldwide
             </button>
           </form>
 
+          {!q ? (
+            <section className="panel">
+              <h2>Start with a location</h2>
+              <p className="dashboard-copy">
+                Try a city, region, country, or known course name. Worldwide search is too large to load all at once, so DiscPlus searches the OpenStreetMap index by place or course name.
+              </p>
+            </section>
+          ) : null}
+
+          {q && courses.length === 0 ? (
+            <section className="panel">
+              <h2>No courses found</h2>
+              <p className="dashboard-copy">
+                Try a broader search like a city, state, province, or country. Some courses may not be tagged in OpenStreetMap yet.
+              </p>
+            </section>
+          ) : null}
+
           <div className="dashboard-feed">
             {courses.map((course) => (
-              <Link
-                className="post-card"
-                href={`/courses/${encodeURIComponent(String(course.id))}`}
-                key={course.id}
-              >
+              <Link className="post-card" href={`/courses/${course.stableId}`} key={course.stableId}>
                 <div className="post-card-top">
                   <div>
                     <p className="post-author">{course.name}</p>
-                    <p className="post-meta">
-                      {course.city || "Unknown city"} • {course.state || "Unknown state"}
-                      {course.zip ? ` • ${course.zip}` : ""}
-                    </p>
+                    <p className="post-meta">{courseLocationLine(course)}</p>
                   </div>
 
-                  <span className="badge">
-                    {course.holeCount ? `${course.holeCount} holes` : "View"}
-                  </span>
+                  <span className="badge">{course.holeCount ? `${course.holeCount} holes` : "Open"}</span>
                 </div>
 
                 <p className="post-content">
-                  {course.rating ? `Rating: ${course.rating}` : "Open course page"}
+                  {course.latitude && course.longitude
+                    ? `GPS: ${course.latitude.toFixed(4)}, ${course.longitude.toFixed(4)}`
+                    : "Open course page"}
                 </p>
               </Link>
             ))}

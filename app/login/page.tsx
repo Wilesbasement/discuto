@@ -16,21 +16,15 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setLoading(true);
 
-    if (!supabase) {
-      setMessage("Supabase is not configured yet.");
-      setLoading(false);
-      return;
-    }
-
-    const resolved = await resolveLoginEmail(supabase as any, identity);
+    const resolved = await resolveLoginEmail(supabase as any, identity.trim());
 
     if (resolved.error || !resolved.email) {
-      setMessage(resolved.error || "Account not found.");
+      setMessage(resolved.error || "No account found. Try your email or create an account.");
       setLoading(false);
       return;
     }
@@ -59,7 +53,7 @@ export default function LoginPage() {
           <div className="page-header">
             <span className="eyebrow">Welcome back</span>
             <h1 className="dashboard-title">Log in.</h1>
-            <p className="dashboard-copy">
+            <p className="dashboard-copy" style={{ marginTop: "1rem" }}>
               Use your username or email to access your scores, check-ins, and course history.
             </p>
           </div>
@@ -72,7 +66,7 @@ export default function LoginPage() {
                 value={identity}
                 onChange={(event) => setIdentity(event.target.value)}
                 autoComplete="username"
-                placeholder="bubbleboy or you@example.com"
+                placeholder="Example: bubbleboy or player@example.com"
                 required
               />
             </label>
@@ -85,6 +79,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
+                placeholder="Example: your password"
                 required
               />
             </label>

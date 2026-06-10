@@ -8,41 +8,40 @@ import { createClient } from "@/lib/supabase/client";
 export function SiteNav() {
   const router = useRouter();
   const supabase = createClient();
+  const [name, setName] = useState<string | null>(null);
 
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-
-  async function refreshUser() {
+  async function loadUser() {
     const { data } = await supabase.auth.getUser();
-    setUser(data.user || null);
-    setLoading(false);
+
+    if (!data.user) {
+      setName(null);
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username, display_name, email")
+      .eq("id", data.user.id)
+      .single();
+
+    setName(profile?.display_name || profile?.username || data.user.email || null);
   }
 
   useEffect(() => {
-    refreshUser();
+    loadUser();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-
-      if (!session?.user) {
-        router.refresh();
-      }
-    });
+    } = supabase.auth.onAuthStateChange(() => loadUser());
 
     return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleLogout() {
+  async function logout() {
     await supabase.auth.signOut();
-
-    setUser(null);
-
-    localStorage.clear();
-    sessionStorage.clear();
-
-    router.push("/login");
+    setName(null);
+    router.push("/");
     router.refresh();
   }
 
@@ -60,20 +59,14 @@ export function SiteNav() {
           <Link href="/leaderboard">Leaderboard</Link>
           <Link href="/events">Events</Link>
           <Link href="/friends">Friends</Link>
-          {user ? <Link href="/profile">Profile</Link> : null}
+          {name ? <Link href="/profile">Profile</Link> : null}
         </nav>
 
         <div className="nav-actions">
-          {!loading && user ? (
+          {name ? (
             <>
-              <span className="badge badge-public">
-                Hi, {user.email?.split("@")[0]}
-              </span>
-
-              <button
-                className="button button-secondary"
-                onClick={handleLogout}
-              >
+              <span className="badge badge-public">Hi, {name}</span>
+              <button className="button button-secondary" onClick={logout} type="button">
                 Log out
               </button>
             </>

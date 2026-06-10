@@ -1,22 +1,24 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteNav } from "@/components/site-nav";
-import { CourseCommunityPanel } from "@/components/course-community-panel";
-import { courseLocationLine, getOsmDiscGolfCourseByStableId } from "@/lib/osm-disc-golf";
-import { saveCourseToRegistry } from "@/lib/course-registry";
+import { getCourseByRegistryId } from "@/lib/course-registry";
 import { getCourseCommunity } from "@/lib/community";
+import { CourseCommunityPanel } from "@/components/course-community-panel";
 
-export default async function CoursePage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
-  const resolved = await Promise.resolve(params);
-  const stableId = decodeURIComponent(resolved.id);
-  const course = await getOsmDiscGolfCourseByStableId(stableId);
+export const dynamic = "force-dynamic";
+
+export default async function CoursePage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const course = await getCourseByRegistryId(params.id);
 
   if (!course) {
     notFound();
   }
 
-  await saveCourseToRegistry(course);
-  const community = await getCourseCommunity(course.stableId);
+  const community = await getCourseCommunity(course.id);
 
   return (
     <main>
@@ -27,13 +29,20 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
           <section className="dashboard-hero">
             <div>
               <span className="eyebrow">Course page</span>
+
               <h1 className="dashboard-title">{course.name}</h1>
-              <p className="dashboard-copy">{courseLocationLine(course)}</p>
+
+              <p className="dashboard-copy">
+                {course.city || "Unknown city"} • {course.state || course.country || "Unknown region"}
+                {course.postal_code ? ` • ${course.postal_code}` : ""}
+              </p>
+
+              {course.address ? <p className="dashboard-copy">{course.address}</p> : null}
             </div>
 
             <div className="grid">
               <article className="stats-card">
-                <strong>{course.holeCount || "?"}</strong>
+                <strong>{course.hole_count || "?"}</strong>
                 <span>Holes</span>
               </article>
 
@@ -49,27 +58,25 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             </div>
           </section>
 
-          <CourseCommunityPanel courseId={course.stableId} courseName={course.name} />
+          <CourseCommunityPanel courseId={course.id} courseName={course.name} />
 
           <section className="panel">
             <h2>Course actions</h2>
-            <p className="dashboard-copy">
-              This course uses stable ID <code>{course.stableId}</code>. That ID is safe for check-ins, scores, leaderboards, and future API routes.
-            </p>
 
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Link className="button secondary" href={`/leaderboard?course=${encodeURIComponent(course.stableId)}`}>
+              <Link className="button secondary" href={`/leaderboard?course=${course.id}`}>
                 Course leaderboard
               </Link>
 
-              {course.latitude && course.longitude ? (
-                <a
-                  className="button secondary"
-                  href={`https://www.openstreetmap.org/search?query=${course.latitude}%2C${course.longitude}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open map
+              {course.website ? (
+                <a className="button secondary" href={course.website} target="_blank" rel="noreferrer">
+                  Course website
+                </a>
+              ) : null}
+
+              {course.google_maps_uri ? (
+                <a className="button secondary" href={course.google_maps_uri} target="_blank" rel="noreferrer">
+                  Google Maps
                 </a>
               ) : null}
 

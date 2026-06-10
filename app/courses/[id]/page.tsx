@@ -1,17 +1,34 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteNav } from "@/components/site-nav";
-import { getCourseById } from "@/lib/courses";
+import { getCourseById, getCourses } from "@/lib/courses";
 import { getCourseCommunity } from "@/lib/community";
 import { CourseCommunityPanel } from "@/components/course-community-panel";
+
+function readCourseUrlId(value: string) {
+  try {
+    return Buffer.from(value, "base64url").toString("utf8");
+  } catch {
+    return decodeURIComponent(value);
+  }
+}
 
 export default async function CoursePage({
   params,
 }: {
   params: { id: string };
 }) {
-  const courseId = decodeURIComponent(params.id);
-  const course = await getCourseById(courseId);
+  const courseId = readCourseUrlId(params.id);
+
+  let course = await getCourseById(courseId);
+
+  if (!course) {
+    const courses = await getCourses("");
+    course =
+      courses.find((item) => String(item.id) === courseId) ||
+      courses.find((item) => item.name === courseId) ||
+      null;
+  }
 
   if (!course) {
     notFound();
@@ -61,7 +78,10 @@ export default async function CoursePage({
             <h2>Course actions</h2>
 
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Link className="button secondary" href={`/leaderboard?course=${encodeURIComponent(String(course.id))}`}>
+              <Link
+                className="button secondary"
+                href={`/leaderboard?course=${encodeURIComponent(String(course.id))}`}
+              >
                 Course leaderboard
               </Link>
 

@@ -4,7 +4,7 @@ import { SiteNav } from "@/components/site-nav";
 import { CourseActionPanel } from "@/components/course-action-panel";
 import { CourseCommunityPanel } from "@/components/course-community-panel";
 import { getCourseCommunity } from "@/lib/community";
-import { courseLocationLine, getRegistryCourseById } from "@/lib/course-registry";
+import { courseLocationLine, courseMapHref, getRegistryCourseById } from "@/lib/course-registry";
 
 export default async function CoursePage({
   params,
@@ -12,16 +12,14 @@ export default async function CoursePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const course = await getRegistryCourseById(decodeURIComponent(id));
+  const course = await getRegistryCourseById(id);
 
-  if (!course) {
-    notFound();
-  }
+  if (!course) notFound();
 
   const community = await getCourseCommunity(course.id);
-  const bestScore = community.rounds[0]?.total_score ?? "N/A";
   const holes = course.holeCount || course.hole_count || null;
-  const shareUrl = `/courses/${course.id}`;
+  const bestScore = community.rounds[0]?.total_score ?? "N/A";
+  const mapHref = courseMapHref(course);
 
   return (
     <main>
@@ -54,34 +52,20 @@ export default async function CoursePage({
           </section>
 
           <section className="panel">
-            <h2>Course actions</h2>
+            <h2>Course command center</h2>
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Link className="button button-secondary" href={`/leaderboard?course=${course.id}`}>
-                Course leaderboard
+              <Link className="button button-secondary" href={`/leaderboard?course=${encodeURIComponent(course.id)}`}>
+                Leaderboard
               </Link>
-              <Link className="button button-secondary" href={`/claim-course?course=${course.id}`}>
+              <Link className="button button-secondary" href={`/claim-course?course=${encodeURIComponent(course.id)}`}>
                 Claim this course
               </Link>
-              <Link className="button button-secondary" href={`/feed?course=${course.id}`}>
+              <Link className="button button-secondary" href={`/feed?course=${encodeURIComponent(course.id)}`}>
                 Course feed
               </Link>
-              <a className="button button-secondary" href={shareUrl}>
-                Share page
+              <a className="button button-secondary" href={mapHref} target="_blank" rel="noreferrer">
+                Open map
               </a>
-              {course.google_maps_uri ? (
-                <a className="button button-secondary" href={course.google_maps_uri} target="_blank" rel="noreferrer">
-                  Open map
-                </a>
-              ) : course.latitude && course.longitude ? (
-                <a
-                  className="button button-secondary"
-                  href={`https://www.google.com/maps/search/?api=1&query=${course.latitude},${course.longitude}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open map
-                </a>
-              ) : null}
               <Link className="button button-secondary" href="/courses">
                 Back to courses
               </Link>
@@ -89,8 +73,7 @@ export default async function CoursePage({
           </section>
 
           <CourseActionPanel courseId={course.id} courseName={course.name} holes={holes} />
-
-          <CourseCommunityPanel courseId={course.id} courseName={course.name} />
+          <CourseCommunityPanel courseId={course.id} />
         </div>
       </section>
     </main>

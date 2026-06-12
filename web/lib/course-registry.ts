@@ -24,16 +24,18 @@ export type RegistryCourse = {
   rating?: number | string | null;
   website?: string | null;
   phone?: string | null;
+  status?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
 
 const COURSE_SELECT =
-  "id,source,source_id,osm_type,osm_id,google_place_id,google_maps_uri,name,description,latitude,longitude,address,city,state,country,postal_code,hole_count,rating,website,phone,created_at,updated_at";
+  "id,source,source_id,osm_type,osm_id,google_place_id,google_maps_uri,name,description,latitude,longitude,address,city,state,country,postal_code,hole_count,rating,website,phone,status,created_at,updated_at";
 
 function normalizeCourse(course: any): RegistryCourse {
   return {
     ...course,
+    id: String(course?.id),
     zip: course?.zip ?? course?.postal_code ?? null,
     holeCount: course?.holeCount ?? course?.hole_count ?? null,
   };
@@ -56,6 +58,7 @@ function localToRegistry(course: any): RegistryCourse {
     rating: course.rating ?? null,
     latitude: course.latitude ?? null,
     longitude: course.longitude ?? null,
+    status: "active",
   });
 }
 
@@ -97,35 +100,41 @@ export async function searchCourses(query = "", limit = 150): Promise<RegistryCo
 
 export async function getRegistryCourseById(id: string): Promise<RegistryCourse | null> {
   const supabase = createClient();
+  const decodedId = decodeURIComponent(id);
 
   if (supabase) {
     const { data, error } = await supabase
       .from("courses")
       .select(COURSE_SELECT)
-      .eq("id", id)
+      .eq("id", decodedId)
       .maybeSingle();
 
-    if (!error && data) {
-      return normalizeCourse(data);
-    }
+    if (!error && data) return normalizeCourse(data);
 
     const { data: bySource } = await supabase
       .from("courses")
       .select(COURSE_SELECT)
-      .eq("source_id", id)
+      .eq("source_id", decodedId)
       .maybeSingle();
 
-    if (bySource) {
-      return normalizeCourse(bySource);
-    }
+    if (bySource) return normalizeCourse(bySource);
   }
 
-  const local = await getLocalCourseById(id);
+  const local = await getLocalCourseById(decodedId);
   return local ? localToRegistry(local) : null;
 }
 
 export function courseLocationLine(course: RegistryCourse) {
-  return [course.city, course.state, course.country, course.zip || course.postal_code]
-    .filter(Boolean)
-    .join(" • ") || "Location unknown";
+  return (
+    [course.city, course.state, course.country, course.zip || course.postal_code].filter(Boolean).join(" • ") ||
+    "Location unknown"
+  );
+}
+
+export function courseMapHref(course: RegistryCourse) {
+  if (course.google_maps_uri) return course.google_maps_uri;
+  if (course.latitude && course.longitude) {
+    return `https://www.google.com/maps/search/?api=1&query=${course.latitude},${course.longitude}`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${course.name} ${courseLocationLine(course)}`)}`;
 }

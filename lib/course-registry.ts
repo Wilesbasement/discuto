@@ -129,3 +129,12 @@ export function courseLocationLine(course: RegistryCourse) {
     .filter(Boolean)
     .join(" • ") || "Location unknown";
 }
+
+
+export function courseMapHref(course: RegistryCourse) {
+  if (course.google_maps_uri) return course.google_maps_uri;
+  if (course.latitude && course.longitude) {
+    return `https://www.google.com/maps/search/?api=1&query=${course.latitude},${course.longitude}`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([course.name, course.city, course.state, course.country].filter(Boolean).join(" "))}`;
+}
